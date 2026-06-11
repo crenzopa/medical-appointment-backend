@@ -3,16 +3,21 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoAppointmentRepository } from "../../infrastructure/dynamodb/DynamoAppointmentRepository";
 import { GetAppointmentsByInsuredIdUseCase } from "../../application/use-cases/GetAppointmentsByInsuredIdUseCase";
 
-const repo = new DynamoAppointmentRepository(new DynamoDBClient({}));
-
-const useCase = new GetAppointmentsByInsuredIdUseCase(repo);
-
 export const handler = lambdaInterceptor(async (event: any) => {
   const insuredId = event.pathParameters?.insuredId;
 
   if (!insuredId) {
     throw new Error("insuredId is required");
   }
+
+  const dynamo = new DynamoDBClient({});
+
+  const repo = new DynamoAppointmentRepository(
+    dynamo,
+    process.env.DYNAMODB_TABLE as string
+  );
+
+  const useCase = new GetAppointmentsByInsuredIdUseCase(repo);
 
   const result = await useCase.execute(insuredId);
 

@@ -8,7 +8,10 @@ export const handler = lambdaInterceptor(async (event: any) => {
   const sns = new SNSClient({});
   const dynamo = new DynamoDBClient({});
 
-  const repo = new DynamoAppointmentRepository(dynamo);
+  const repo = new DynamoAppointmentRepository(
+    dynamo,
+    process.env.DYNAMODB_TABLE as string
+  );
 
   const useCase = new CreateAppointmentUseCase(
     repo,

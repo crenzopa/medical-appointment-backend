@@ -7,13 +7,13 @@ import {
 import { AppointmentRepository } from "../../domain/repositories/AppointmentRepository";
 import { Appointment } from "../../domain/entities/Appointment";
 
-
 export class DynamoAppointmentRepository implements AppointmentRepository {
   private docClient: DynamoDBDocumentClient;
-  private tableName = process.env.DYNAMODB_TABLE!;
+  private tableName: string;
 
-  constructor(client: DynamoDBClient) {
+  constructor(client: DynamoDBClient, tableName: string) {
     this.docClient = DynamoDBDocumentClient.from(client);
+    this.tableName = tableName;
   }
 
   async save(appointment: Appointment): Promise<void> {
@@ -26,18 +26,18 @@ export class DynamoAppointmentRepository implements AppointmentRepository {
   }
 
   async findByInsuredId(insuredId: string): Promise<Appointment[]> {
-  const result = await this.docClient.send(
-    new QueryCommand({
-      TableName: this.tableName,
-      KeyConditionExpression: "insuredId = :insuredId",
-      ExpressionAttributeValues: {
-        ":insuredId": insuredId
-      }
-    })
-  );
+    const result = await this.docClient.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        KeyConditionExpression: "insuredId = :insuredId",
+        ExpressionAttributeValues: {
+          ":insuredId": insuredId
+        }
+      })
+    );
 
-  return (result.Items || []) as Appointment[];
-}
+    return (result.Items || []) as Appointment[];
+  }
 
   async update(appointment: Appointment): Promise<void> {
     await this.save(appointment);

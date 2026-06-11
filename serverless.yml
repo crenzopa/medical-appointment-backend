@@ -15,37 +15,8 @@ provider:
     SQS_CL_URL: !Ref SQSCL
     SQS_CONFIRMATION_URL: !Ref SQSConfirmation
 
-  iam:
-    role:
-      statements:
-        - Effect: Allow
-          Action:
-            - dynamodb:PutItem
-            - dynamodb:UpdateItem
-            - dynamodb:Query
-            - dynamodb:GetItem
-          Resource: "*"
-
-        - Effect: Allow
-          Action:
-            - sns:Publish
-          Resource: "*"
-
-        - Effect: Allow
-          Action:
-            - sqs:ReceiveMessage
-            - sqs:DeleteMessage
-            - sqs:SendMessage
-          Resource: "*"
-
-        - Effect: Allow
-          Action:
-            - events:PutEvents
-          Resource: "*"
-
 functions:
 
-  # ================= HEALTH CHECK =================
   health:
     handler: dist/presentation/handlers/health.handler
     events:
@@ -53,7 +24,6 @@ functions:
           path: health
           method: get
 
-  # ================= CREATE APPOINTMENT =================
   createAppointment:
     handler: dist/presentation/handlers/createAppointment.handler
     events:
@@ -61,7 +31,6 @@ functions:
           path: appointments
           method: post
 
-  # ================= GET APPOINTMENTS =================
   getAppointments:
     handler: dist/presentation/handlers/getAppointments.handler
     events:
@@ -69,7 +38,6 @@ functions:
           path: appointments/{insuredId}
           method: get
 
-  # ================= SQS PE CONSUMER =================
   appointmentPE:
     handler: dist/presentation/handlers/appointmentPE.handler
     events:
@@ -77,7 +45,6 @@ functions:
           arn:
             Fn::GetAtt: [SQSPE, Arn]
 
-  # ================= SQS CL CONSUMER =================
   appointmentCL:
     handler: dist/presentation/handlers/appointmentCL.handler
     events:
@@ -85,7 +52,6 @@ functions:
           arn:
             Fn::GetAtt: [SQSCL, Arn]
 
-  # ================= CONFIRMATION UPDATER =================
   appointmentStatusUpdater:
     handler: dist/presentation/handlers/appointmentStatusUpdater.handler
     events:
@@ -93,10 +59,16 @@ functions:
           arn:
             Fn::GetAtt: [SQSConfirmation, Arn]
 
+  docs:
+    handler: dist/presentation/handlers/docs.handler
+    events:
+      - http:
+          path: docs
+          method: get
+
 resources:
   Resources:
 
-    # ---------------- DYNAMODB ----------------
     AppointmentsTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -113,25 +85,21 @@ resources:
           - AttributeName: appointmentId
             KeyType: RANGE
 
-    # ---------------- SNS ----------------
     AppointmentTopic:
       Type: AWS::SNS::Topic
       Properties:
         TopicName: appointment-topic
 
-    # ---------------- SQS PE ----------------
     SQSPE:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: SQS_PE
 
-    # ---------------- SQS CL ----------------
     SQSCL:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: SQS_CL
 
-    # ---------------- SQS CONFIRMATION ----------------
     SQSConfirmation:
       Type: AWS::SQS::Queue
       Properties:
