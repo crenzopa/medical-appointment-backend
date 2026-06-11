@@ -1,0 +1,140 @@
+service: medical-appointment-backend
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: dev
+
+  environment:
+    DYNAMODB_TABLE: AppointmentsTable
+    SNS_TOPIC_ARN: !Ref AppointmentTopic
+    SQS_PE_URL: !Ref SQSPE
+    SQS_CL_URL: !Ref SQSCL
+    SQS_CONFIRMATION_URL: !Ref SQSConfirmation
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:Query
+            - dynamodb:GetItem
+          Resource: "*"
+
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource: "*"
+
+        - Effect: Allow
+          Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:SendMessage
+          Resource: "*"
+
+        - Effect: Allow
+          Action:
+            - events:PutEvents
+          Resource: "*"
+
+functions:
+
+  # ================= HEALTH CHECK =================
+  health:
+    handler: dist/presentation/handlers/health.handler
+    events:
+      - http:
+          path: health
+          method: get
+
+  # ================= CREATE APPOINTMENT =================
+  createAppointment:
+    handler: dist/presentation/handlers/createAppointment.handler
+    events:
+      - http:
+          path: appointments
+          method: post
+
+  # ================= GET APPOINTMENTS =================
+  getAppointments:
+    handler: dist/presentation/handlers/getAppointments.handler
+    events:
+      - http:
+          path: appointments/{insuredId}
+          method: get
+
+  # ================= SQS PE CONSUMER =================
+  appointmentPE:
+    handler: dist/presentation/handlers/appointmentPE.handler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [SQSPE, Arn]
+
+  # ================= SQS CL CONSUMER =================
+  appointmentCL:
+    handler: dist/presentation/handlers/appointmentCL.handler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [SQSCL, Arn]
+
+  # ================= CONFIRMATION UPDATER =================
+  appointmentStatusUpdater:
+    handler: dist/presentation/handlers/appointmentStatusUpdater.handler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt: [SQSConfirmation, Arn]
+
+resources:
+  Resources:
+
+    # ---------------- DYNAMODB ----------------
+    AppointmentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: AppointmentsTable
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: insuredId
+            AttributeType: S
+          - AttributeName: appointmentId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: insuredId
+            KeyType: HASH
+          - AttributeName: appointmentId
+            KeyType: RANGE
+
+    # ---------------- SNS ----------------
+    AppointmentTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: appointment-topic
+
+    # ---------------- SQS PE ----------------
+    SQSPE:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: SQS_PE
+
+    # ---------------- SQS CL ----------------
+    SQSCL:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: SQS_CL
+
+    # ---------------- SQS CONFIRMATION ----------------
+    SQSConfirmation:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: SQS_CONFIRMATION
+
+plugins: []

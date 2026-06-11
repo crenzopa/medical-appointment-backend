@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.*
+npm-debug.log
+serverless-error.log
+.aws
+.vscode
+coverage
+.serverless
